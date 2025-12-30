@@ -1,0 +1,195 @@
+# space-game
+# the code below is for me learning/have some fun and a little bit of AI to help me with the code 
+# feel free to mess with the code
+
+import pygame
+import random
+from sys import exit 
+
+pygame.init() 
+
+screen = pygame.display.set_mode((500, 600))
+clock = pygame.time.Clock()
+pygame.display.set_caption('rocket!!!')
+
+# Game states
+MENU = "menu"
+RUNNING = "running"
+GAME_OVER = "game_over"
+state = MENU
+
+# surface
+black = pygame.transform.scale(pygame.image.load('pixel/black.png'), (500,600))
+black_y = 0
+speedblack = 5
+
+# game menu 
+menu = pygame.transform.scale(pygame.image.load('pixel/menu.png'), (500,600))
+play = pygame.transform.scale(
+    pygame.image.load('pixel/play.png'), (200,100)
+)
+playrect = play.get_rect(topleft=(150, 450))
+over = pygame.transform.scale(pygame.image.load('pixel/over.png'),(500,600))
+
+# character
+rocket = pygame.transform.scale(pygame.image.load('pixel/rocket.png'), (100,100))
+rocketrect = rocket.get_rect(center=(200, 450))
+
+# enemy 
+aestroid = pygame.transform.scale(pygame.image.load('pixel/aestroid.png'), (100,100))
+aestroidrect = aestroid.get_rect(center=(random.randint(0,500), -100))
+
+# comet
+comet = pygame.transform.scale(pygame.image.load('pixel/comets.png'), (150,150))
+cometrect = comet.get_rect(center=(random.randint(10,450), -100))
+
+# star
+star = pygame.transform.scale(pygame.image.load('pixel/star.png'), (100,100))
+starrect = star.get_rect(center=(random.randint(100,400), -100))
+
+# score
+score = 0 
+text = pygame.font.Font(None, 30)
+texts = text.render(f'score: {score}', False, 'white')
+
+# rotate
+angle = 0 
+rotation = 5
+
+def reset_game():
+    # reset position
+    global rocketrect, aestroidrect, cometrect, starrect, score, texts, black_y
+    rocketrect = rocket.get_rect(center=(200, 450))
+    aestroidrect = aestroid.get_rect(center=(random.randint(0,500), -100))
+    cometrect = comet.get_rect(center=(random.randint(10,450), -100))
+    starrect = star.get_rect(center=(random.randint(100,400), -100))
+    score = 0
+    texts = text.render(f'score: {score}', False, 'white')
+    black_y = 0
+
+def gamemenaw():
+    screen.blit(menu,(0,0))
+    screen.blit(play,(150,480))
+
+def gameover():
+    screen.blit(over,(0,0))
+
+def world():
+    global black_y, aestroidrect
+
+    # background loop
+    screen.blit(black,(0,black_y))
+    screen.blit(black,(0, black_y + 600))
+    black_y -= speedblack
+    if black_y <= -500: 
+        black_y = 0
+    
+    # draw rocket
+    screen.blit(rocket, rocketrect)
+
+    # move asteroid down
+    aestroidrect.y += 5
+    if aestroidrect.top > 650:
+        aestroidrect.x = random.randint(0, 400)   
+        aestroidrect.y = -100
+
+def collision():
+    global state, score, texts
+    
+    small_rocket = rocketrect.inflate(-20, -20)
+    small_aestroid = aestroidrect.inflate(-20, -20)
+    small_star = starrect.inflate(-10,-10)
+    small_comet = cometrect.inflate(-10,-10)
+    
+    if small_aestroid.colliderect(small_rocket):
+        state = GAME_OVER
+    if small_comet.colliderect(small_rocket):
+        state = GAME_OVER
+    if small_star.colliderect(small_rocket):
+        starrect.x = random.randint(100, 400)
+        starrect.y = -100
+        score += 1
+        texts = text.render(f'score: {score}', False, 'white')
+
+def angles():
+    global angle
+    angle += rotation
+    rotated = pygame.transform.rotate(aestroid, angle)
+    new_rect = rotated.get_rect(center=aestroidrect.center)
+    screen.blit(rotated,new_rect)
+
+def starangle():
+    global angle
+    angle += rotation
+    rotates = pygame.transform.rotate(star, angle)
+    rects = rotates.get_rect(center=starrect.center)
+    screen.blit(rotates, rects)
+
+def draw_comet():
+    global cometrect
+    cometrect.y += 10
+    if cometrect.top > 700:
+        cometrect.x = random.randint(10,450)
+        cometrect.y = -100
+    screen.blit(comet, cometrect)
+
+def draw_star():
+    global starrect 
+    starrect.y += 4
+    if starrect.top > 700:
+        starrect.x = random.randint(100,400)
+        starrect.y = -100
+
+def scores():
+    screen.blit(texts,(0,0))
+    if score > 9:
+        draw_comet()
+
+def everything():
+    world()
+    collision()
+    angles()
+    draw_star()
+    scores()
+    starangle()
+
+# main loop
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            exit() 
+        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if state == MENU:
+                mouse_pos = event.pos
+                if playrect.collidepoint(mouse_pos):
+                    reset_game()
+                    state = RUNNING
+
+    keys = pygame.key.get_pressed()
+
+    if state == MENU:
+        gamemenaw()
+
+    elif state == RUNNING:
+        if keys[pygame.K_a]:
+            rocketrect.x -= 6
+        if keys[pygame.K_d]:
+            rocketrect.x += 6
+
+        if rocketrect.left < 0:
+            rocketrect.left = 0 
+        if rocketrect.right > 500:
+            rocketrect.right = 500
+
+        everything()
+
+    elif state == GAME_OVER:
+        gameover()
+        if keys[pygame.K_r]:
+            reset_game()
+            state = RUNNING
+
+    pygame.display.update()
+    clock.tick(60)
